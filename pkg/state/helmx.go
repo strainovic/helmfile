@@ -99,10 +99,15 @@ func (st *HelmState) PrepareChartify(helm helmexec.Interface, release *ReleaseSp
 		st.removeFiles(filesNeedCleaning)
 	}
 
-	var shouldRun bool
+	var (
+		shouldRun bool
+		localDir  bool
+	)
 
 	dir := filepath.Join(st.basePath, chart)
 	if stat, _ := os.Stat(dir); stat != nil && stat.IsDir() {
+		localDir = true
+
 		if exists, err := st.fileExists(filepath.Join(dir, "Chart.yaml")); err == nil && !exists {
 			shouldRun = true
 		}
@@ -195,6 +200,11 @@ func (st *HelmState) PrepareChartify(helm helmexec.Interface, release *ReleaseSp
 		filesNeedCleaning = append(filesNeedCleaning, generatedFiles...)
 
 		chartify.Opts.ValuesFiles = generatedFiles
+
+		if localDir {
+			chartify.Opts.TemplateData = st.newReleaseTemplateData(release)
+			chartify.Opts.TemplateFuncs = st.newReleaseTemplateFuncMap(dir)
+		}
 
 		return chartify, clean, nil
 	}
